@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="pt-pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JAFS - Gestão Gráfica</title>
+    
+    <meta name="theme-color" content="#2563eb">
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="manifest" href="data:application/manifest+json,{%22name%22:%22JAFS%20Print%20Solutions%22,%22short_name%22:%22JAFS%22,%22start_url%22:%22.%22,%22display%22:%22standalone%22,%22background_color%22:%22%23ffffff%22,%22theme_color%22:%22%232563eb%22}">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        .glass-card { background: white; border: 1px solid #e2e8f0; }
+        .tab-active { border-bottom: 3px solid #2563eb; color: #2563eb; font-weight: 700; }
+        .edit-mode { border: 2px solid #f59e0b !important; background-color: #fffbeb; }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <header class="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+        <div class="text-center md:text-left">
+            <h1 class="text-3xl font-black text-gray-800 tracking-tight italic">JAFS <span class="text-blue-600 font-bold not-italic">Print</span></h1>
+            <p id="status-rede" class="text-green-500 text-[10px] font-bold uppercase tracking-widest"><i class="fas fa-circle mr-1"></i> Online</p>
+        </div>
+        <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 min-w-[220px] text-center">
+            <p class="text-[10px] text-gray-400 uppercase font-bold tracking-widest">Saldo Atual</p>
+            <p class="text-3xl font-black text-green-600" id="display-saldo">0.00 Kz</p>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto">
+        
+        <nav class="flex space-x-8 mb-8 border-b border-gray-200 overflow-x-auto">
+            <button onclick="switchTab('caixa')" id="btn-nav-caixa" class="pb-2 transition tab-active">Fluxo de Caixa</button>
+            <button onclick="switchTab('stock')" id="btn-nav-stock" class="pb-2 transition text-gray-400">Stock de Materiais</button>
+        </nav>
+
+        <div id="view-caixa" class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div class="lg:col-span-1">
+                <div id="caixa-card" class="glass-card p-6 rounded-2xl shadow-sm sticky top-4">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 id="caixa-titulo" class="font-bold text-gray-700">Novo Registro</h3>
+                        <button onclick="cancelarEdicaoCaixa()" id="btn-cancel-caixa" class="hidden text-[10px] text-orange-600 font-bold uppercase">Cancelar</button>
+                    </div>
+                    <form id="caixa-form" class="space-y-4">
+                        <input type="hidden" id="edit-id-caixa">
+                        <input type="text" id="desc" required class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none" placeholder="Descrição do Serviço">
+                        <input type="number" id="valor" required class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none" placeholder="Valor em Kz">
+                        <select id="tipo" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none font-bold">
+                            <option value="entrada">Entrada (+)</option>
+                            <option value="saida">Saída (-)</option>
+                        </select>
+                        <button type="submit" id="btn-submit-caixa" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition">Salvar Movimento</button>
+                    </form>
+                </div>
+            </div>
+            <div class="lg:col-span-2">
+                <div class="glass-card rounded-2xl shadow-sm overflow-hidden">
+                    <div class="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                        <h3 class="font-bold text-gray-700">Histórico</h3>
+                        <button onclick="limparTudo()" class="text-[10px] text-red-400 hover:text-red-600 font-bold uppercase tracking-tighter">Limpar Caixa</button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left">
+                            <thead class="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-widest">
+                                <tr>
+                                    <th class="px-6 py-4">Data</th>
+                                    <th class="px-6 py-4">Descrição</th>
+                                    <th class="px-6 py-4">Valor</th>
+                                    <th class="px-6 py-4 text-center">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="lista-movimentos" class="divide-y divide-gray-100 text-sm"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="view-stock" class="hidden">
+            <div id="stock-card" class="glass-card p-6 rounded-2xl shadow-sm mb-8">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 id="stock-titulo" class="font-bold text-gray-700">Gerir Material</h3>
+                    <button onclick="cancelarEdicaoStock()" id="btn-cancel-stock" class="hidden text-[10px] text-orange-600 font-bold uppercase">Cancelar</button>
+                </div>
+                <form id="stock-form" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <input type="hidden" id="edit-id-stock">
+                    <input type="text" id="item-nome" placeholder="Item (Ex: Toner)" required class="p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none">
+                    <input type="number" id="item-qtd" placeholder="Qtd Inicial" required class="p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none">
+                    <input type="text" id="item-unid" placeholder="Unid (Ex: Folhas)" class="p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none">
+                    <button type="submit" id="btn-submit-stock" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition">Adicionar Item</button>
+                </form>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="lista-stock"></div>
+        </div>
+    </main>
+
+    <script>
+        let movimentos = JSON.parse(localStorage.getItem('jafs_caixa')) || [];
+        let stock = JSON.parse(localStorage.getItem('jafs_stock')) || [];
+
+        // NAVEGAÇÃO CORRIGIDA
+        function switchTab(tab) {
+            const vCaixa = document.getElementById('view-caixa');
+            const vStock = document.getElementById('view-stock');
+            const bCaixa = document.getElementById('btn-nav-caixa');
+            const bStock = document.getElementById('btn-nav-stock');
+
+            if(tab === 'caixa') {
+                vCaixa.classList.remove('hidden');
+                vStock.classList.add('hidden');
+                bCaixa.classList.add('tab-active');
+                bStock.classList.remove('tab-active', 'text-blue-600');
+                bStock.classList.add('text-gray-400');
+            } else {
+                vStock.classList.remove('hidden');
+                vCaixa.classList.add('hidden');
+                bStock.classList.add('tab-active');
+                bCaixa.classList.remove('tab-active', 'text-blue-600');
+                bCaixa.classList.add('text-gray-400');
+            }
+            render(); // Garante que os itens aparecem ao trocar de aba
+        }
+
+        // LÓGICA DE CAIXA
+        document.getElementById('caixa-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const editId = document.getElementById('edit-id-caixa').value;
+            const item = {
+                desc: document.getElementById('desc').value,
+                valor: parseFloat(document.getElementById('valor').value),
+                tipo: document.getElementById('tipo').value,
+                data: editId ? movimentos.find(m => m.id == editId).data : new Date().toLocaleString('pt-PT')
+            };
+
+            if (editId) {
+                const idx = movimentos.findIndex(m => m.id == editId);
+                movimentos[idx] = { ...movimentos[idx], ...item };
+                cancelarEdicaoCaixa();
+            } else {
+                movimentos.unshift({ id: Date.now(), ...item });
+            }
+            render();
+            e.target.reset();
+        });
+
+        function editarMovimento(id) {
+            const m = movimentos.find(m => m.id === id);
+            document.getElementById('edit-id-caixa').value = m.id;
+            document.getElementById('desc').value = m.desc;
+            document.getElementById('valor').value = m.valor;
+            document.getElementById('tipo').value = m.tipo;
+            document.getElementById('caixa-titulo').innerText = "Editar Registro";
+            document.getElementById('btn-submit-caixa').innerText = "Atualizar";
+            document.getElementById('btn-submit-caixa').classList.replace('bg-blue-600', 'bg-orange-500');
+            document.getElementById('caixa-card').classList.add('edit-mode');
+            document.getElementById('btn-cancel-caixa').classList.remove('hidden');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function cancelarEdicaoCaixa() {
+            document.getElementById('caixa-form').reset();
+            document.getElementById('edit-id-caixa').value = "";
+            document.getElementById('caixa-titulo').innerText = "Novo Registro";
+            document.getElementById('btn-submit-caixa').innerText = "Salvar Movimento";
+            document.getElementById('btn-submit-caixa').classList.replace('bg-orange-500', 'bg-blue-600');
+            document.getElementById('caixa-card').classList.remove('edit-mode');
+            document.getElementById('btn-cancel-caixa').classList.add('hidden');
+        }
+
+        // LÓGICA DE STOCK
+        document.getElementById('stock-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const editId = document.getElementById('edit-id-stock').value;
+            const item = {
+                nome: document.getElementById('item-nome').value,
+                qtd: parseInt(document.getElementById('item-qtd').value),
+                unid: document.getElementById('item-unid').value || 'un'
+            };
+
+            if (editId) {
+                const idx = stock.findIndex(s => s.id == editId);
+                stock[idx] = { ...stock[idx], ...item };
+                cancelarEdicaoStock();
+            } else {
+                stock.push({ id: Date.now(), ...item });
+            }
+            render();
+            e.target.reset();
+        });
+
+        function editarStock(id) {
+            const s = stock.find(s => s.id === id);
+            document.getElementById('edit-id-stock').value = s.id;
+            document.getElementById('item-nome').value = s.nome;
+            document.getElementById('item-qtd').value = s.qtd;
+            document.getElementById('item-unid').value = s.unid;
+            document.getElementById('stock-titulo').innerText = "Editar Item";
+            document.getElementById('btn-submit-stock').classList.replace('bg-indigo-600', 'bg-orange-500');
+            document.getElementById('stock-card').classList.add('edit-mode');
+            document.getElementById('btn-cancel-stock').classList.remove('hidden');
+        }
+
+        function cancelarEdicaoStock() {
+            document.getElementById('stock-form').reset();
+            document.getElementById('edit-id-stock').value = "";
+            document.getElementById('stock-titulo').innerText = "Gerir Material";
+            document.getElementById('btn-submit-stock').classList.replace('bg-orange-500', 'bg-indigo-600');
+            document.getElementById('stock-card').classList.remove('edit-mode');
+            document.getElementById('btn-cancel-stock').classList.add('hidden');
+        }
+
+        function ajustarStock(id, n) {
+            const i = stock.find(s => s.id === id);
+            if(i) { i.qtd = Math.max(0, i.qtd + n); render(); }
+        }
+
+        // RENDERIZAÇÃO
+        function render() {
+            localStorage.setItem('jafs_caixa', JSON.stringify(movimentos));
+            localStorage.setItem('jafs_stock', JSON.stringify(stock));
+
+            // Render Caixa
+            document.getElementById('lista-movimentos').innerHTML = movimentos.map(m => `
+                <tr class="hover:bg-gray-50 border-b border-gray-50">
+                    <td class="px-6 py-4 text-[10px] text-gray-400 font-mono">${m.data}</td>
+                    <td class="px-6 py-4 font-bold text-gray-700 uppercase text-xs">${m.desc}</td>
+                    <td class="px-6 py-4 ${m.tipo === 'entrada' ? 'text-green-600' : 'text-red-600'} font-black">
+                        ${m.tipo === 'entrada' ? '+' : '-'} ${m.valor.toLocaleString()}
+                    </td>
+                    <td class="px-6 py-4 text-center space-x-3">
+                        <button onclick="editarMovimento(${m.id})" class="text-blue-400 hover:text-blue-600"><i class="fas fa-edit"></i></button>
+                        <button onclick="if(confirm('Eliminar?')){movimentos=movimentos.filter(x=>x.id!==${m.id});render();}" class="text-gray-200 hover:text-red-400"><i class="fas fa-trash"></i></button>
+                    </td>
+                </tr>
+            `).join('');
+
+            // Render Stock
+            document.getElementById('lista-stock').innerHTML = stock.map(s => `
+                <div class="glass-card p-5 rounded-3xl border-l-8 ${s.qtd < 5 ? 'border-red-500 bg-red-50' : 'border-blue-500'}">
+                    <div class="flex justify-between mb-2">
+                        <h4 class="font-black text-gray-700 uppercase text-[10px] tracking-widest">${s.nome}</h4>
+                        <div class="flex space-x-2">
+                            <button onclick="editarStock(${s.id})" class="text-blue-400"><i class="fas fa-pen"></i></button>
+                            <button onclick="if(confirm('Apagar?')){stock=stock.filter(x=>x.id!==${s.id});render();}" class="text-gray-200 hover:text-red-500"><i class="fas fa-times"></i></button>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-4xl font-black text-gray-800">${s.qtd}<small class="text-[10px] text-gray-400 ml-1 uppercase">${s.unid}</small></span>
+                        <div class="flex space-x-1">
+                            <button onclick="ajustarStock(${s.id},-1)" class="w-10 h-10 rounded-xl bg-gray-100 hover:bg-gray-200 font-bold">-</button>
+                            <button onclick="ajustarStock(${s.id},1)" class="w-10 h-10 rounded-xl bg-blue-100 hover:bg-blue-200 text-blue-600 font-bold">+</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+
+            const saldo = movimentos.reduce((acc, m) => m.tipo === 'entrada' ? acc + m.valor : acc - m.valor, 0);
+            document.getElementById('display-saldo').innerText = `${saldo.toLocaleString('pt-PT', {minimumFractionDigits: 2})} Kz`;
+            document.getElementById('display-saldo').className = saldo >= 0 ? 'text-3xl font-black text-green-600' : 'text-3xl font-black text-red-600';
+        }
+
+        function limparTudo() { if(confirm("Deseja limpar todo o histórico?")) { movimentos = []; render(); } }
+
+        // Inicializar
+        render();
+
+        // Status Offline
+        window.addEventListener('online', () => document.getElementById('status-rede').innerHTML = '<i class="fas fa-circle mr-1"></i> Online');
+        window.addEventListener('offline', () => document.getElementById('status-rede').innerHTML = '<i class="fas fa-wifi-slash mr-1"></i> Offline');
+    </script>
+</body>
+</html>
